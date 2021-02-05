@@ -142,6 +142,7 @@ create_or_update_netapp_volume()
     fi      
 }
 
+#Create data protection volume
 create_netapp_datareplication_volume()
 {
     local __resultvar=$1
@@ -182,32 +183,34 @@ create_netapp_datareplication_volume()
     fi      
 }
 
-# ANF cleanup functions
-
-# Delete Azure NetApp Files Account
-delete_netapp_account()
+# Wait for replication to become "Mirrored" or "Uninitialized"
+wait_for_complete_replication_status()
 {
-    az netappfiles account delete --resource-group $RESOURCEGROUP_NAME \
-        --name $NETAPP_ACCOUNT_NAME    
+    for number in {1..60}; do
+        sleep 10
+        _replication_status=$(az netappfiles volume replication status --resource-group $SECONDARY_RESOURCEGROUP_NAME \
+            --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --name $SECONDARY_NETAPP_VOLUME_NAME | jq -r ".mirrorState")
+        if [[ "${_replication_status,,}" == "mirrored" ]]; then
+            break
+        fi
+    done   
 }
 
-# Delete Azure NetApp Files Capacity Pool
-delete_netapp_pool()
+#Wait for replication to be in "Broken" state
+wait_for_broken_replication_status()
 {
-    az netappfiles pool delete --resource-group $RESOURCEGROUP_NAME \
-        --account-name $NETAPP_ACCOUNT_NAME \
-        --name $NETAPP_POOL_NAME
-    sleep 10    
-}
-
-# Delete Azure NetApp Files Volume
-delete_netapp_volume()
-{
-    az netappfiles volume delete --resource-group $RESOURCEGROUP_NAME \
-        --account-name $NETAPP_ACCOUNT_NAME \
-        --pool-name $NETAPP_POOL_NAME \
-        --name $NETAPP_VOLUME_NAME
-    sleep 10
+    for number in {1..60}; do
+        sleep 10
+        _replication_status=$(az netappfiles volume replication status --resource-group $SECONDARY_RESOURCEGROUP_NAME \
+            --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --name $SECONDARY_NETAPP_VOLUME_NAME | jq -r ".mirrorState")
+        if [[ "${_replication_status,,}" == "broken" ]]; then
+            break
+        fi
+    done    
 }
 
 #Script Start
@@ -285,6 +288,7 @@ display_message "Authorizing replication in primary volume..."
         --pool-name $PRIMARY_NETAPP_POOL_NAME \
         --remote-volume-resource-id $NEW_SECONDARY_VOLUME_ID \
         --resource-group $PRIMARY_RESOURCEGROUP_NAME
+    wait_for_complete_replication_status
     display_message "Sucessfully authorized replication in primary volume"
 } || {
     display_message "Failed to authorize replication in primary volume"
@@ -300,8 +304,11 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     # Break volume replication
     display_message "Breaking replication connection..."
     {
-        az netappfiles volume replication suspend --ids $NEW_SECONDARY_VOLUME_ID
-        sleep 60
+        az netappfiles volume replication suspend --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --name $SECONDARY_NETAPP_VOLUME_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --resource-group $SECONDARY_RESOURCEGROUP_NAME
+        wait_for_broken_replication_status
         display_message "Sucessfully broke replication connection"
     } || {
         display_message "Failed to break replication connection"
@@ -311,8 +318,10 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     # Delete volume replication
     display_message "Deleting replication in secondary volume..."
     {
-        az netappfiles volume replication remove --ids $NEW_SECONDARY_VOLUME_ID
-        sleep 60
+        az netappfiles volume replication remove --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --name $SECONDARY_NETAPP_VOLUME_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --resource-group $SECONDARY_RESOURCEGROUP_NAME
         display_message "Sucessfully deleted replication in Secondary volume"
     } || {
         display_message "Failed to delete replication in Secondary volume"
@@ -323,8 +332,10 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     # Delete Volume
     display_message "Deleting Azure NetApp Files Secondary Volume..."
     {
-        az netappfiles volume delete --ids $NEW_SECONDARY_VOLUME_ID
-        sleep 60 
+        az netappfiles volume delete --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --name $SECONDARY_NETAPP_VOLUME_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --resource-group $SECONDARY_RESOURCEGROUP_NAME 
         display_message "Azure NetApp Files volume was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files secondary volume"
@@ -334,8 +345,9 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     #Delete Capacity Pool
     display_message "Deleting Azure NetApp Files secondary Pool ..."
     {
-        az netappfiles pool delete --ids $NEW_SECONDARY_POOL_ID
-        sleep 60    
+        az netappfiles pool delete --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --pool-name $SECONDARY_NETAPP_POOL_NAME \
+            --resource-group $SECONDARY_RESOURCEGROUP_NAME   
         display_message "Azure NetApp Files secondary pool was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files secondary pool"
@@ -345,7 +357,8 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     #Delete Account
     display_message "Deleting Azure NetApp Files secondary Account ..."
     {
-        az netappfiles account delete --ids $NEW_SECONDARY_ACCOUNT_ID
+        az netappfiles account delete --account-name $SECONDARY_NETAPP_ACCOUNT_NAME \
+            --resource-group $SECONDARY_RESOURCEGROUP_NAME
         display_message "Azure NetApp Files secondary Account was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files secondary Account"
@@ -356,8 +369,10 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     # Delete Volume
     display_message "Deleting Azure NetApp Files Primary Volume..."
     {
-        az netappfiles volume delete --ids $NEW_PRIMARY_VOLUME_ID
-        sleep 60   
+        az netappfiles volume delete --account-name $PRIMARY_NETAPP_ACCOUNT_NAME \
+            --name $PRIMARY_NETAPP_VOLUME_NAME \
+            --pool-name $PRIMARY_NETAPP_POOL_NAME \
+            --resource-group $PRIMARY_RESOURCEGROUP_NAME  
         display_message "Azure NetApp Files Primary volume was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files Primary volume"
@@ -367,8 +382,9 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     #Delete Capacity Pool
     display_message "Deleting Azure NetApp Files Primary Pool ..."
     {
-        az netappfiles pool delete --ids $NEW_PRIMARY_POOL_ID
-        sleep 60   
+        az netappfiles pool delete --account-name $PRIMARY_NETAPP_ACCOUNT_NAME \
+            --pool-name $PRIMARY_NETAPP_POOL_NAME \
+            --resource-group $PRIMARY_RESOURCEGROUP_NAME 
         display_message "Azure NetApp Files Primary pool was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files Primary pool"
@@ -378,7 +394,8 @@ if [[ "$SHOULD_CLEANUP" == true ]]; then
     #Delete Account
     display_message "Deleting Azure NetApp Files Primary Account ..."
     {
-        az netappfiles account delete --ids $NEW_PRIMARY_ACCOUNT_ID
+        az netappfiles account delete --account-name $PRIMARY_NETAPP_ACCOUNT_NAME \
+            --resource-group $PRIMARY_RESOURCEGROUP_NAME
         display_message "Azure NetApp Files Primary Account was deleted successfully"
     } || {
         display_message "Failed to delete Azure NetApp Files Primary Account"

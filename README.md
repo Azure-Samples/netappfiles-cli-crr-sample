@@ -22,9 +22,9 @@ In this sample application we perform the following operations:
 		
  * Secondary ANF Account
 	| Secondary Capacity pool
-		| Secondary NFS v.1 Data Replication Volume with referencing to the primary volume Resource ID
+		| Secondary NFSv4.1 Data Replication Volume with referencing to the primary volume Resource ID
 			
- * Authorize Source volume with Desitnation Volume Resource ID
+ * Authorize Source volume with Destination Volume Resource ID
  
  * Deletion, the clean up process takes place (not enabled by default, please set the parameter SHOULD_CLEANUP to true if you want the clean up code to take a place),deleting all resources in the reverse order following the hierarchy otherwise we can't remove resources that have nested resources still live.
  
