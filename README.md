@@ -9,7 +9,7 @@ products:
 description: "This project demonstrates how to use Azure CLI commands for Azure NetAppFiles to a Cross-Region Replication NFSv4.1 Volume."
 ---
 
-# Azure CLI NetAppFiles NFS4.1 Sample Script
+# Azure CLI NetAppFiles CRR Sample Script
 
 This project demonstrates how to deploy a cross-region replication with enabled NFS 4.1 protocol volume using Azure CLI and Azure NetApp Files SDK.
 
