@@ -1,7 +1,7 @@
 ---
 page_type: sample
 languages:
-- cli
+- bash
 - azurecli
 products:
 - azure
@@ -11,23 +11,21 @@ description: "This project demonstrates how to use Azure CLI commands for Azure 
 
 # Azure CLI NetAppFiles CRR Sample Script
 
-This project demonstrates how to deploy a cross-region replication with enabled NFS 4.1 protocol volume using Azure CLI and Azure NetApp Files SDK.
+This project demonstrates how to deploy a cross-region replication with enabled NFS 4.1 protocol volume using Azure CLI module and Azure NetApp Files SDK.
 
 In this sample application we perform the following operations:
 
 * Creation
-  * Primary ANF Account
-	| Primary Capacity pool 
-		| Primary NFS v4.1 Volume 
-		
- * Secondary ANF Account
-	| Secondary Capacity pool
-		| Secondary NFSv4.1 Data Replication Volume with referencing to the primary volume Resource ID
-			
- * Authorize Source volume with Destination Volume Resource ID
+  * Primary NetApp account
+    * Primary capacity pool
+      * Primary NFS v3 volume
+  * Secondary NetApp account
+    * Secondary capacity pool
+      * Secondary NFS v3 Data Replication volume with reference to the primary volume Resource ID
+* Authorize primary volume with secondary volume Resource ID
+* Clean up created resources (not enabled by default) 
  
- * Deletion, the clean up process takes place (not enabled by default, please set the parameter SHOULD_CLEANUP to true if you want the clean up code to take a place),deleting all resources in the reverse order following the hierarchy otherwise we can't remove resources that have nested resources still live.
- 
+ * Deletion, the clean up process takes place (not enabled by default, please set the parameter SHOULD_CLEANUP to true if you want the clean up code to take a place),deleting all resources in the reverse order following the hierarchy otherwise we can't remove resources that have nested resources still live. 
 
 If you don't already have a Microsoft Azure subscription, you can get a FREE trial account [here](http://go.microsoft.com/fwlink/?LinkId=330212).
 
@@ -51,11 +49,11 @@ The following table describes all files within this solution:
 | src        | CreateANFCRR.sh         | Authenticates and executes all operations                                                                                           |
 
 
-# How to run the CLI script
+# How to run the script
 
 1. Clone it locally
     ```powershell
-    git clone https://github.com/Azure-Samples/netappfiles-cli-nfs-sample.git
+    git clone https://github.com/Azure-Samples/netappfiles-cli-crr-sample.git
     ```
 	
 1. Open a bash session and execute the following Run the script
