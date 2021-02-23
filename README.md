@@ -6,7 +6,7 @@ languages:
 products:
 - azure
 - azure-netapp-files
-description: "This project demonstrates how to use Azure CLI commands for Azure NetAppFiles to a Cross-Region Replication NFSv4.1 Volume."
+description: This project demonstrates how to use Azure CLI commands for Azure NetAppFiles to a Cross-Region Replication NFSv4.1 Volume.
 ---
 
 # Azure CLI NetAppFiles CRR Sample Script
